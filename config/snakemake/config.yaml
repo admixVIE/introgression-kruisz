@@ -1,0 +1,15 @@
+output_dir: "results/"
+replicates: 100
+seed: 12345
+seq_len: 200
+1src_demo_models: ['HumanNeanderthal']
+
+
+map_arch_exec: "ext/SPrime/sprimepipeline/pub.pipeline.pbs/tools/map_arch_genome/map_arch"
+score_summary_exec: "ext/SPrime/sprimepipeline/pub.pipeline.pbs/tools/score_summary.r"
+ms_exec: "ext/msdir/ms"
+skovhmm_exec_filter: "ext/SkovHMM/FiltervariantsNOancestral.py"
+skovhmm_exec_train: "ext/SkovHMM/Train.py"
+skovhmm_exec_decode: "ext/SkovHMM/Decode.py"
+skovhmm_exec_env: "config/SkovHMM/env.yaml"
+sprime_exec: "ext/SPrime/sprime.jar"

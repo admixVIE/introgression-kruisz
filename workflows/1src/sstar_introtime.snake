@@ -1,0 +1,231 @@
+import sys
+sys.path.insert(0, './')
+
+import os
+import demes
+import numpy as np
+import pandas as pd
+from scipy.stats import norm
+from scipy.stats import nbinom
+from utils.utils import *
+
+
+try:
+    libr_dir = os.environ["CONDA_PREFIX"] + "/lib/R/library"
+except:
+    libr_dir = os.environ["CONDA"] + "/lib/R/library"
+
+
+configfile: "config/snakemake/config.yaml"
+
+ms_exec = config["ms_exec"]
+
+output_dir = config["output_dir"]
+replicates = config["replicates"]
+
+np.random.seed(config["seed"])
+
+seed_list = np.random.random_integers(1,2**31,replicates)
+demo_model_list = config["1src_demo_models"]
+snp_num_list = np.arange(25,705,5)
+quantile_list = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.98, 0.99, 0.995, 0.999]
+scenario_list = ['true']
+nref_list = [10, 50, 100]
+ntgt_list = [1]
+
+introtime_list = [10, 20, 50, 100, 200, 500, 1000, 2000]
+
+
+# 0: Anc
+# 1: Neanderthals
+# 2: CEU
+# 3: YRI
+# N0 = 1000
+HumanNeanderthal_ms_params = {}
+HumanNeanderthal_ms_params["true"] = {}
+
+graph = demes.load("./config/simulation/models/HumanNeanderthal_4G21_no_introgression.yaml")
+HumanNeanderthal_ms_params["true"]["10"] = demes.to_ms(graph, N0=1000, samples=[0, 0, 2, 20])
+HumanNeanderthal_ms_params["true"]["50"] = demes.to_ms(graph, N0=1000, samples=[0, 0, 2, 100])
+HumanNeanderthal_ms_params["true"]["100"] = demes.to_ms(graph, N0=1000, samples=[0, 0, 2, 200])
+
+
+rule all:
+    input:
+        output_dir + "inference/sstar/sstar_1src_accuracy_introtime.txt",
+
+
+rule mut_rec_combination:
+    output:
+        rates = output_dir + "inference/sstar/{demog}/simulation/{scenario}/nref_{nref}/ntgt_{ntgt}/introtime_{introtime}/rates.1src.combination",
+    resources: time_min=60, mem_mb=5000, cpus=1,
+    threads: 1,
+    run:
+        seq_len = 50000 
+        N0 = 1000
+        mut_rate_mean = 1.29e-8
+        scaled_mut_rate_mean = 4*N0*mut_rate_mean*seq_len
+        scaled_mut_rate_sdv = 0.233
+        rec_rate_mean = 0.7e-8
+        scaled_rec_rate_mean = 4*N0*rec_rate_mean*seq_len
+        mut_rate_list = norm.rvs(loc=scaled_mut_rate_mean, scale=scaled_mut_rate_sdv, size=10000)
+        rec_rate_list = nbinom.rvs(n=0.5, p=0.5/(0.5+scaled_rec_rate_mean), size=10000)
+
+        with open(output.rates, 'w') as o:
+            for i in range(len(mut_rate_list)):
+                if mut_rate_list[i] < 0.001: mut_rate_list[i] = 0.001
+                if rec_rate_list[i] < 0.001: rec_rate_list[i] = 0.001
+                mut_rate = mut_rate_list[i]
+                rec_rate = rec_rate_list[i]
+                o.write(f'{mut_rate}\t{rec_rate}\n')
+
+
+rule simulate_glm_data:
+    input:
+        rates = rules.mut_rec_combination.output.rates,
+    output:
+        ms = output_dir + "inference/sstar/{demog}/simulation/{scenario}/nref_{nref}/ntgt_{ntgt}/introtime_{introtime}/{snp_num}/sim1src.ms",
+    params:
+        nsamp = lambda wildcards: 2*(int(wildcards.nref)+int(wildcards.ntgt)),
+        nreps = 10000,
+        seq_len = lambda wildcards: 50000,
+        ms_exec = config["ms_exec"],
+        ms_params = lambda wildcards: HumanNeanderthal_ms_params[wildcards.scenario][wildcards.nref],
+    resources: time_min=60, mem_mb=5000, cpus=1,
+    threads: 1,
+    shell:
+        """
+        cat {input.rates} | {params.ms_exec} {params.nsamp} {params.nreps} -t tbs -r tbs {params.seq_len} -s {wildcards.snp_num} {params.ms_params} > {output.ms}
+        """
+
+
+rule ms2vcf:
+    input:
+        ms = rules.simulate_glm_data.output.ms,
+    output:
+        vcf = output_dir + "inference/sstar/{demog}/simulation/{scenario}/nref_{nref}/ntgt_{ntgt}/introtime_{introtime}/{snp_num}/sim1src.vcf",
+    params:
+        nsamp = lambda wildcards: 2*(int(wildcards.nref)+int(wildcards.ntgt)),
+        seq_len = lambda wildcards: 50000,
+    resources: time_min=60, mem_mb=5000, cpus=1,
+    threads: 1,
+    run:
+        ms2vcf(input.ms, output.vcf, params.nsamp, params.seq_len) 
+
+
+rule cal_score:
+    input:
+        vcf = rules.ms2vcf.output.vcf,
+        ref_ind = "config/sstar/simulation/{demog}/nref_{nref}/ntgt_{ntgt}/sim.ref.ind.list",
+        tgt_ind = "config/sstar/simulation/{demog}/nref_{nref}/ntgt_{ntgt}/sim.tgt.ind.list",
+    output:
+        score = output_dir + "inference/sstar/{demog}/simulation/{scenario}/nref_{nref}/ntgt_{ntgt}/introtime_{introtime}/{snp_num}/sim1src.sstar.scores",
+    params:
+        seq_len = lambda wildcards: 50000,
+    resources: time_min=3000, mem_mb=10000, cpus=1,
+    threads: 1,
+    shell:
+        """
+        sstar score --vcf {input.vcf} --ref {input.ref_ind} --tgt {input.tgt_ind} --output {output.score} --thread {threads} --win-len {params.seq_len} --win-step {params.seq_len}
+        """
+
+
+rule cal_quantile:
+    input:
+        score = rules.cal_score.output.score,
+    output:
+        quantile = output_dir + "inference/sstar/{demog}/simulation/{scenario}/nref_{nref}/ntgt_{ntgt}/introtime_{introtime}/{snp_num}/sim1src.sstar.quantile",
+    params:
+        sim_quantiles = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.98, 0.99, 0.995, 0.999],
+    resources: time_min=3000, mem_mb=5000, cpus=1,
+    threads: 1,
+    run:
+        df = pd.read_csv(input.score, sep="\t").dropna()
+        mean_df = df.groupby(['chrom', 'start', 'end'], as_index=False)['S*_score'].mean().dropna()
+        scores = np.quantile(mean_df['S*_score'], params.sim_quantiles)
+        with open(output.quantile, 'w') as o:
+            for i in range(len(scores)):
+                o.write(f'{scores[i]}\t{wildcards.snp_num}\t{params.sim_quantiles[i]}\n')
+
+
+rule quantile_summary:
+    input:
+        hum_nref_10_true = expand(output_dir + "inference/sstar/HumanNeanderthal/simulation/true/nref_10/ntgt_1/introtime_{introtime}/{snp_num}/sim1src.sstar.quantile", snp_num=snp_num_list, introtime=introtime_list),
+        hum_nref_50_true = expand(output_dir + "inference/sstar/HumanNeanderthal/simulation/true/nref_50/ntgt_1/introtime_{introtime}/{snp_num}/sim1src.sstar.quantile", snp_num=snp_num_list, introtime=introtime_list),
+        hum_nref_100_true = expand(output_dir + "inference/sstar/HumanNeanderthal/simulation/true/nref_100/ntgt_1/introtime_{introtime}/{snp_num}/sim1src.sstar.quantile", snp_num=snp_num_list, introtime=introtime_list),
+    output:
+        hum_nref_10_true = output_dir + "inference/sstar/HumanNeanderthal/simulation/true/nref_10/ntgt_1/introtime_{introtime}/quantile.1src.summary.txt",
+        hum_nref_50_true = output_dir + "inference/sstar/HumanNeanderthal/simulation/true/nref_50/ntgt_1/introtime_{introtime}/quantile.1src.summary.txt",
+        hum_nref_100_true = output_dir + "inference/sstar/HumanNeanderthal/simulation/true/nref_100/ntgt_1/introtime_{introtime}/quantile.1src.summary.txt",
+    resources: time_min=3000, mem_mb=5000, cpus=1,
+    threads: 1,
+    shell:
+        """
+        cat {input.hum_nref_10_true} | sort -nk 2,2 | sed '1iS*_score\\tSNP_number\\tquantile\n' > {output.hum_nref_10_true}
+        cat {input.hum_nref_50_true} | sort -nk 2,2 | sed '1iS*_score\\tSNP_number\\tquantile\n' > {output.hum_nref_50_true}
+        cat {input.hum_nref_100_true} | sort -nk 2,2 | sed '1iS*_score\\tSNP_number\\tquantile\n' > {output.hum_nref_100_true}
+        """
+
+
+rule sstar_score:
+    input:
+        vcf = output_dir + "simulated_data/{demog}/nref_{nref}/ntgt_{ntgt}/{seed}/introtime_{introtime}/sim1src.biallelic.vcf.gz",
+        ref_ind = "config/sstar/{demog}/nref_{nref}/ntgt_{ntgt}/sim.ref.ind.list",
+        tgt_ind = "config/sstar/{demog}/nref_{nref}/ntgt_{ntgt}/sim.tgt.ind.list"
+    output:
+        score = output_dir + "inference/sstar/{demog}/nref_{nref}/ntgt_{ntgt}/{seed}/introtime_{introtime}/sstar.1src.out.score",
+    params:
+        seq_len = lambda wildcards: 50000,
+    resources: time_min=3000, mem_mb=10000, cpus=1,
+    threads: 1,
+    shell:
+        """
+        sstar score --vcf {input.vcf} --ref {input.ref_ind} --tgt {input.tgt_ind} --output {output.score} --thread {threads} --win-len {params.seq_len} --win-step 10000
+        """
+
+
+rule sstar_threshold:
+    input:
+        score = rules.sstar_score.output.score,
+        summary = output_dir + "inference/sstar/{demog}/simulation/{scenario}/nref_{nref}/ntgt_{ntgt}/introtime_{introtime}/quantile.1src.summary.txt",
+    output:
+        quantiles = output_dir + "inference/sstar/{demog}/nref_{nref}/ntgt_{ntgt}/{seed}/introtime_{introtime}/{scenario}/sstar.1src.quantile.{quantile}.out",
+    params:
+        R_LIBS = libr_dir,
+    resources: time_min=3000, mem_mb=10000, cpus=1,
+    threads: 1,
+    shell:
+        """
+        export R_LIBS={params.R_LIBS}
+        sstar threshold --score {input.score} --sim-data {input.summary} --quantile {wildcards.quantile} --output {output.quantiles}
+        """
+
+
+rule sstar_process_output:
+    input:
+        quantiles = rules.sstar_threshold.output.quantiles,
+        true_tracts = output_dir + "simulated_data/{demog}/nref_{nref}/ntgt_{ntgt}/{seed}/introtime_{introtime}/sim1src.introgressed.tracts.bed",
+    output:
+        inferred_tracts = output_dir + "inference/sstar/{demog}/nref_{nref}/ntgt_{ntgt}/{seed}/introtime_{introtime}/{scenario}/sstar.1src.quantile.{quantile}.out.bed",
+        accuracy = output_dir + "inference/sstar/{demog}/nref_{nref}/ntgt_{ntgt}/{seed}/introtime_{introtime}/{scenario}/sstar.1src.quantile.{quantile}.out.accuracy",
+    resources: time_min=3000, mem_mb=10000, cpus=1,
+    threads: 1,
+    run:
+        process_sstar_1src_output(input.quantiles, output.inferred_tracts)
+        precision, recall = cal_accuracy(input.true_tracts, output.inferred_tracts)
+        with open(output.accuracy, 'w') as o:
+            o.write(f'{wildcards.demog}\t{wildcards.scenario}\tnref_{wildcards.nref}_ntgt_{wildcards.ntgt}\t{wildcards.introtime}\t{wildcards.quantile}\t{precision}\t{recall}\n')
+
+
+rule accuracy_summary:
+    input:
+        accuracy_files = expand(output_dir + "inference/sstar/{demog}/nref_{nref}/ntgt_{ntgt}/{seed}/introtime_{introtime}/{scenario}/sstar.1src.quantile.{quantile}.out.accuracy",
+                                demog=demo_model_list, nref=nref_list, ntgt=ntgt_list, seed=seed_list, introtime=introtime_list, quantile=quantile_list, scenario=scenario_list),
+    output:
+        accuracy_table = output_dir + "inference/sstar/sstar_1src_accuracy_introtime.txt",
+    resources: time_min=60, mem_mb=2000, cpus=1,
+    threads: 1,
+    shell:
+        """
+        cat {input.accuracy_files} | sed '1idemography\\tscenario\\tsample\\tintrogression_time\\tcutoff\\tprecision\\trecall' > {output.accuracy_table}
+        """
