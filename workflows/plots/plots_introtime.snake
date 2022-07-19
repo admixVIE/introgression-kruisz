@@ -1,0 +1,33 @@
+configfile: "config/snakemake/config.yaml"
+
+output_dir = config["output_dir"]
+
+introtime_list = [10, 20, 50, 100, 200, 500, 1000, 2000]
+
+
+
+rule all:
+    input:
+        expand(output_dir + "plots/introtime/{introtime}/sstar.1src.mean.accuracy_introtime_{introtime}.txt",
+               introtime=introtime_list),
+        expand(output_dir + "plots/introtime/{introtime}/sprime.1src.mean.accuracy_introtime_{introtime}.txt",
+               introtime=introtime_list),
+        expand(output_dir + "plots/introtime/{introtime}/skovhmm.1src.mean.accuracy_introtime_{introtime}.txt",
+               introtime=introtime_list),
+        expand(output_dir + "plots/introtime/{introtime}/precision-recall_introtime_{introtime}.pdf",
+               introtime=introtime_list),
+
+
+rule plot_accuracy:
+    input:
+        sstar_1src_accuracy_introtime = output_dir + "inference/sstar/sstar_1src_accuracy_introtime_{introtime}.txt",
+        sprime_1src_accuracy_introtime = output_dir + "inference/SPrime/sprime_1src_accuracy_introtime_{introtime}.txt",
+        skovhmm_1src_accuracy_introtime = output_dir + "inference/SkovHMM/skovhmm_1src_accuracy_introtime_{introtime}.txt",
+    output:
+        sstar_1src_accuracy_introtime_mean = output_dir + "plots/introtime/{introtime}/sstar.1src.mean.accuracy_introtime_{introtime}.txt",
+        sprime_1src_accuracy_introtime_mean = output_dir + "plots/introtime/{introtime}/sprime.1src.mean.accuracy_introtime_{introtime}.txt",
+        skovhmm_1src_accuracy_introtime_mean = output_dir + "plots/introtime/{introtime}/skovhmm.1src.mean.accuracy_introtime_{introtime}.txt",
+        accuracy = output_dir + "plots/introtime/{introtime}/precision-recall_introtime_{introtime}.pdf",
+    threads: 1,
+    script:
+        "plots_introtime.py"

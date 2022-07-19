@@ -1,0 +1,33 @@
+configfile: "config/snakemake/config.yaml"
+
+output_dir = config["output_dir"]
+
+proportion_list = [0.001, 0.005, 0.01, 0.015, 0.0225, 0.05, 0.1, 0.25]
+
+
+
+rule all:
+    input:
+        expand(output_dir + "plots/proportion/{proportion}/sstar.1src.mean.accuracy_proportion_{proportion}.txt",
+               proportion=proportion_list),
+        expand(output_dir + "plots/proportion/{proportion}/sprime.1src.mean.accuracy_proportion_{proportion}.txt",
+               proportion=proportion_list),
+        expand(output_dir + "plots/proportion/{proportion}/skovhmm.1src.mean.accuracy_proportion_{proportion}.txt",
+               proportion=proportion_list),
+        expand(output_dir + "plots/proportion/{proportion}/precision-recall_proportion_{proportion}.pdf",
+               proportion=proportion_list),
+
+
+rule plot_accuracy:
+    input:
+        sstar_1src_accuracy_proportion = output_dir + "inference/sstar/sstar_1src_accuracy_proportion_{proportion}.txt",
+        sprime_1src_accuracy_proportion = output_dir + "inference/SPrime/sprime_1src_accuracy_proportion_{proportion}.txt",
+        skovhmm_1src_accuracy_proportion = output_dir + "inference/SkovHMM/skovhmm_1src_accuracy_proportion_{proportion}.txt",
+    output:
+        sstar_1src_accuracy_proportion_mean = output_dir + "plots/proportion/{proportion}/sstar.1src.mean.accuracy_proportion_{proportion}.txt",
+        sprime_1src_accuracy_proportion_mean = output_dir + "plots/proportion/{proportion}/sprime.1src.mean.accuracy_proportion_{proportion}.txt",
+        skovhmm_1src_accuracy_proportion_mean = output_dir + "plots/proportion/{proportion}/skovhmm.1src.mean.accuracy_proportion_{proportion}.txt",
+        accuracy = output_dir + "plots/proportion/{proportion}/precision-recall_proportion_{proportion}.pdf",
+    threads: 1,
+    script:
+        "plots_proportion.py"

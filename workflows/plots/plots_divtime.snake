@@ -1,0 +1,33 @@
+configfile: "config/snakemake/config.yaml"
+
+output_dir = config["output_dir"]
+
+divtime_list = [2000, 5000, 10000]
+
+
+
+rule all:
+    input:
+        expand(output_dir + "plots/divtime/{divtime}/sstar.1src.mean.accuracy_divtime_{divtime}.txt",
+               divtime=divtime_list),
+        expand(output_dir + "plots/divtime/{divtime}/sprime.1src.mean.accuracy_divtime_{divtime}.txt",
+               divtime=divtime_list),
+        expand(output_dir + "plots/divtime/{divtime}/skovhmm.1src.mean.accuracy_divtime_{divtime}.txt",
+               divtime=divtime_list),
+        expand(output_dir + "plots/divtime/{divtime}/precision-recall_divtime_{divtime}.pdf",
+               divtime=divtime_list),
+
+
+rule plot_accuracy:
+    input:
+        sstar_1src_accuracy_divtime = output_dir + "inference/sstar/sstar_1src_accuracy_divtime_{divtime}.txt",
+        sprime_1src_accuracy_divtime = output_dir + "inference/SPrime/sprime_1src_accuracy_divtime_{divtime}.txt",
+        skovhmm_1src_accuracy_divtime = output_dir + "inference/SkovHMM/skovhmm_1src_accuracy_divtime_{divtime}.txt",
+    output:
+        sstar_1src_accuracy_divtime_mean = output_dir + "plots/divtime/{divtime}/sstar.1src.mean.accuracy_divtime_{divtime}.txt",
+        sprime_1src_accuracy_divtime_mean = output_dir + "plots/divtime/{divtime}/sprime.1src.mean.accuracy_divtime_{divtime}.txt",
+        skovhmm_1src_accuracy_divtime_mean = output_dir + "plots/divtime/{divtime}/skovhmm.1src.mean.accuracy_divtime_{divtime}.txt",
+        accuracy = output_dir + "plots/divtime/{divtime}/precision-recall_divtime_{divtime}.pdf",
+    threads: 1,
+    script:
+        "plots_divtime.py"
