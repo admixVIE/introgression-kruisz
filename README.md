@@ -67,7 +67,7 @@ For the SkovHMM pipeline it is necessary to create a custom environment, because
 	snakemake -s workflows/1src/skovhmm_divtime.snake --use-conda -c 1
 
 If the pipelines are also to be sent as jobs to a cluster, then it is recommended to perform the following steps: 
-Create a  [profiles](https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles) depending on the cluster. 
+Create a  [profile](https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles) depending on the cluster. 
 The profile used in case for the `SLURM Workload Manager` is located in `config/slurm/config.yaml`.
 Creating a folder named `logs_slurm` and then submitting the jobs with, for example, the following commands (`-j` specifies the number of threads (cluster)):
 
