@@ -1,4 +1,4 @@
-# Introgression Detection - Data simulation with different parameters and analysis by different tools
+# Introgression Detection - Data simulation with different parameters and Analysis by different tools
 
 ## Instructions for replicating the pipeline
 
@@ -83,3 +83,5 @@ There is also a small script to create individual plots. This pipeline can be ex
 	snakemake -s workflows/plots/plots_proportion.snake
 	snakemake -s workflows/plots/plots_introtime.snake
 	snakemake -s workflows/plots/plots_divtime.snake
+
+In the course of this work, a storage capacity of 10 TB and a files limit of two million were used. In our case, we had to pay attention to the storage limits and delete intermediate results. The results of the data simulations must not be deleted until the end, since these are needed for the individual analyses. Therefore, the intermediate results were deleted after the respective analyses by the individual tools and only the final accuracy tables were kept. SPrime and SkovHMM require a high files limit and sstar a high storage capacity.
