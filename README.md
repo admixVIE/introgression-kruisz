@@ -1,6 +1,6 @@
-# Introgression Detection using Different Tools and Parameters
+# Introgression Detection - simulating data with different parameters and analyse it using different tools
 
-##Instructions for replicating the pipeline
+## Instructions for replicating the pipeline
 
 This GitHub repository contains [Snakemake](https://snakemake.readthedocs.io/en/stable/) pipelines for replicating the analysis of my Master Thesis "A performance comparison of tools to detect introgressed fragments". These pipelines were tested on the LiSC (Life Science Compute Cluster of the University of Vienna) and also on a Linux operating system (Ubuntu 20.04.2 LTS).
 
