@@ -1,4 +1,4 @@
-# Introgression Detection - simulating data with different parameters and analyse it using different tools
+# Introgression Detection - Data simulation with different parameters and analysis by different tools
 
 ## Instructions for replicating the pipeline
 
@@ -11,7 +11,7 @@ First of all, it is necessary to install [Anaconda](https://www.anaconda.com/) o
 	conda env create -f environment.yml
 	conda activate introgression-kruisz
 
-# Download the required tools
+## Download the required tools
 
 To download the required tools that cannot be installed through `conda`, the following commands can be used:
 
@@ -38,7 +38,7 @@ It is also necessary to download the file `ms.tar.gz` from [Hudson Lab](http://h
 
 The tool sstar is already installed as a package using the previously created environment.
 
-# Run the pipelines
+## Run the pipelines
 
 After installing the tools, it is recommended to test the pipeliens locally beforehand with a dry-run. This can be done, for example, with the following command:
 
