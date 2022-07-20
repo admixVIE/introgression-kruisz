@@ -16,6 +16,8 @@ rule all:
                introtime=introtime_list),
         expand(output_dir + "plots/introtime/{introtime}/precision-recall_introtime_{introtime}.pdf",
                introtime=introtime_list),
+        expand(output_dir + "plots/introtime/{introtime}/1src_prauc_{introtime}.txt",
+               introtime=introtime_list),
 
 
 rule plot_accuracy:
@@ -28,6 +30,7 @@ rule plot_accuracy:
         sprime_1src_accuracy_introtime_mean = output_dir + "plots/introtime/{introtime}/sprime.1src.mean.accuracy_introtime_{introtime}.txt",
         skovhmm_1src_accuracy_introtime_mean = output_dir + "plots/introtime/{introtime}/skovhmm.1src.mean.accuracy_introtime_{introtime}.txt",
         accuracy = output_dir + "plots/introtime/{introtime}/precision-recall_introtime_{introtime}.pdf",
+        auc1 = output_dir + "plots/introtime/{introtime}/1src_prauc_{introtime}.txt",
     threads: 1,
     script:
         "plots_introtime.py"

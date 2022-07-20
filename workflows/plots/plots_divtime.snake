@@ -16,6 +16,8 @@ rule all:
                divtime=divtime_list),
         expand(output_dir + "plots/divtime/{divtime}/precision-recall_divtime_{divtime}.pdf",
                divtime=divtime_list),
+        expand(output_dir + "plots/divtime/{divtime}/1src_prauc_{divtime}.txt",
+               divtime=divtime_list),
 
 
 rule plot_accuracy:
@@ -28,6 +30,7 @@ rule plot_accuracy:
         sprime_1src_accuracy_divtime_mean = output_dir + "plots/divtime/{divtime}/sprime.1src.mean.accuracy_divtime_{divtime}.txt",
         skovhmm_1src_accuracy_divtime_mean = output_dir + "plots/divtime/{divtime}/skovhmm.1src.mean.accuracy_divtime_{divtime}.txt",
         accuracy = output_dir + "plots/divtime/{divtime}/precision-recall_divtime_{divtime}.pdf",
+        auc1 = output_dir + "plots/divtime/{divtime}/1src_prauc_{divtime}.txt",
     threads: 1,
     script:
         "plots_divtime.py"
