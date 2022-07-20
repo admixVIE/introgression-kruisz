@@ -1,8 +1,8 @@
-# Introgression Detection - Data simulation with different parameters and Analysis by different tools
+# Introgression Detection
 
 ## Instructions for replicating the pipeline
 
-This GitHub repository contains [Snakemake](https://snakemake.readthedocs.io/en/stable/) pipelines for replicating the analysis of my Master Thesis "A performance comparison of tools to detect introgressed fragments". These pipelines were tested on the LiSC (Life Science Compute Cluster of the University of Vienna) and also on a Linux operating system (Ubuntu 20.04.2 LTS).
+This GitHub repository contains [Snakemake](https://snakemake.readthedocs.io/en/stable/) pipelines for replicating the analysis of my Master Thesis "A performance comparison of tools to detect introgressed fragments". This involves simulating data with different parameters and then analyzing it with various tools. These pipelines were tested on the LiSC (Life Science Compute Cluster of the University of Vienna) and also on a Linux operating system (Ubuntu 20.04.2 LTS).
 
 First of all, it is necessary to install [Anaconda](https://www.anaconda.com/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html). After that, the following commands can be used to create a virtual environment: 
 
